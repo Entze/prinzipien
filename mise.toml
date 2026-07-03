@@ -1,3 +1,6 @@
 [tools]
 hk = "1.49.0"
 pkl = "0.31.1"
+tinymist = "0.15.2"
+typst = "0.15.0"
+typstyle = "0.15.0"

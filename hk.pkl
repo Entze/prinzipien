@@ -10,6 +10,11 @@ local formatters = new Mapping<String, Step> {
   ["trailing_whitespace"] = (Builtins.trailing_whitespace) {
     types = List("text")
   }
+  ["typstyle"] {
+    glob = List("src/**/*.typ")
+    check = "typstyle --check {{ files }}"
+    fix = "typstyle --inplace {{ files }}"
+  }
 }
 
 local checkers = new Mapping<String, Step> {
