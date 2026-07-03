@@ -82,6 +82,24 @@ All sizes derive from a small set of shared dimensions.
   )
 ]
 
+== The margin and the content areas share one horizon
+
+#slide(margin-content: block(
+  width: 100%,
+  height: 40%,
+  fill: tint(rgb("#f9ab1a")),
+  stroke: rgb("#221f21") + 1pt,
+  align(center + horizon)[margin \ (accent tint)],
+))[
+  #block(
+    width: 100%,
+    height: 80%,
+    fill: rgb("#f9ab1a"),
+    stroke: rgb("#221f21") + 1pt,
+    align(center + horizon)[content \ (accent)],
+  )
+]
+
 #point(substatement: [Tints of it are enough for everything else])[
   One accent colour marks what matters
 ]

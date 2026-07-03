@@ -18,11 +18,56 @@
   std.color.hsv(h, s * (saturation / 100%), v)
 }
 
+// The square logo variant: the explicitly configured one if given,
+// otherwise derived from the full logo (`config-info`'s `logo`) by
+// cropping its left end into a square box (logos usually carry their
+// mark there). `none` if there is no logo.
+#let square-logo(self, size) = {
+  let sq = self.store.logo-square
+  if sq == auto {
+    let logo = self.info.logo
+    if logo == none {
+      none
+    } else {
+      box(
+        width: size,
+        height: size,
+        clip: true,
+        align(left + horizon, logo),
+      )
+    }
+  } else if sq == none {
+    none
+  } else {
+    box(width: size, height: size, align(center + horizon, sq))
+  }
+}
+
+// The full logo, fitted into the margin area, for the title and overview
+// slides.
+#let margin-logo(self) = {
+  let logo = self.info.logo
+  if logo == none {
+    none
+  } else {
+    box(
+      width: self.store.margin-width - 2 * self.store.gap,
+      height: 2 * self.store.gap,
+      align(left + horizon, logo),
+    )
+  }
+}
+
 /// Default slide function.
 ///
 /// The slide's message (one full sentence) is its title: it is taken from
-/// the current second-level heading and set at the top of the content area,
-/// flush against the margin edge.
+/// the current second-level heading and set at the top of the slide,
+/// flush against the margin edge. The title row spans the full slide
+/// width — the left margin is reserved for the bodies only — so a long
+/// title never competes with the margin for space.
+///
+/// Below the title, the margin area and the content area form one row;
+/// both bodies are aligned with its horizon.
 ///
 /// - config (dictionary): Per-slide touying configuration
 ///   (`config-xxx`, merge several with `utils.merge-dicts`).
@@ -35,7 +80,7 @@
 ///
 /// - margin-content (content, none): Content placed *into* the reserved
 ///   left margin area, e.g. labels for an image sitting to the right.
-///   It starts at the same height as the slide body; use `v(..)` inside
+///   It shares the horizon with the slide body; use `v(..)` inside
 ///   to push individual labels down.
 ///
 /// - bodies (array): The contents of the slide.
@@ -47,20 +92,42 @@
   margin-content: none,
   ..bodies,
 ) = touying-slide-wrapper(self => {
-  let margin-setting = body => {
-    show: setting
-    if margin-content != none {
-      place(top + left, dx: self.store.gap - self.store.margin-width, block(
-        width: self.store.margin-width - 2 * self.store.gap,
-        margin-content,
-      ))
+  let gap = self.store.gap
+  let margin-width = self.store.margin-width
+  let title-row = {
+    let logo = square-logo(self, 1.5 * gap)
+    if logo != none {
+      place(top + left, dx: margin-width - 3 * gap, logo)
     }
-    body
+    pad(left: margin-width - gap, text(
+      size: 1.15em,
+      weight: "bold",
+      fill: self.colors.neutral-darkest,
+      utils.display-current-heading(level: self.slide-level),
+    ))
+  }
+  let layout-setting = body => {
+    show: setting
+    grid(
+      columns: (margin-width - 2 * gap, 1fr),
+      column-gutter: gap,
+      rows: (auto, 1fr),
+      row-gutter: 1.5em,
+      grid.cell(colspan: 2, title-row),
+      grid.cell(align: horizon, if margin-content == none { [] } else {
+        margin-content
+      }),
+      grid.cell(align: horizon, body),
+    )
   }
   let self = utils.merge-dicts(
     self,
+    // The title is rendered by the layout grid above, not as a preamble
+    // inside the margin-less page body.
+    config-common(subslide-preamble: none),
     config-page(
       fill: self.colors.neutral-lightest,
+      margin: (left: gap, right: gap, top: gap, bottom: gap),
       footer: self.store.footer,
     ),
   )
@@ -68,7 +135,7 @@
     self: self,
     config: config,
     repeat: repeat,
-    setting: margin-setting,
+    setting: layout-setting,
     composer: composer,
     ..bodies,
   )
@@ -115,46 +182,6 @@
     }
   }
   (body, none)
-}
-
-// The square logo variant: the explicitly configured one if given,
-// otherwise derived from the full logo (`config-info`'s `logo`) by
-// cropping its left end into a square box (logos usually carry their
-// mark there). `none` if there is no logo.
-#let square-logo(self, size) = {
-  let sq = self.store.logo-square
-  if sq == auto {
-    let logo = self.info.logo
-    if logo == none {
-      none
-    } else {
-      box(
-        width: size,
-        height: size,
-        clip: true,
-        align(left + horizon, logo),
-      )
-    }
-  } else if sq == none {
-    none
-  } else {
-    box(width: size, height: size, align(center + horizon, sq))
-  }
-}
-
-// The full logo, fitted into the margin area, for the title and overview
-// slides.
-#let margin-logo(self) = {
-  let logo = self.info.logo
-  if logo == none {
-    none
-  } else {
-    box(
-      width: self.store.margin-width - 2 * self.store.gap,
-      height: 2 * self.store.gap,
-      align(left + horizon, logo),
-    )
-  }
 }
 
 // Shared layout for the overview slides (preview, transition, review):
@@ -384,27 +411,15 @@
     config-page(
       ..page-args,
       margin: (left: margin-width, right: gap, top: gap, bottom: gap),
+      // Zero descent makes the footer area exactly the bottom gap strip,
+      // so the page number can be centred in it (touying anchors the
+      // footer at the page bottom and the descent shrinks it from above).
       footer-descent: 0em,
     ),
     config-common(
       slide-fn: slide,
       new-section-slide-fn: transition,
       slide-level: 2,
-      // The message is the slide title: display the current second-level
-      // heading at the top of the content area, with the square logo to
-      // its left, in the margin area.
-      subslide-preamble: self => block(width: 100%, below: 1.5em, {
-        let logo = square-logo(self, 1.5 * self.store.gap)
-        if logo != none {
-          place(top + left, dx: -2 * self.store.gap, logo)
-        }
-        text(
-          size: 1.15em,
-          weight: "bold",
-          fill: self.colors.neutral-darkest,
-          utils.display-current-heading(level: self.slide-level),
-        )
-      }),
     ),
     config-methods(
       init: (self: none, body) => {
@@ -441,18 +456,24 @@
       logo-square: logo-square,
       // `current / total` in the bottom right; the total excludes the
       // backmatter (touying freezes `last-slide-counter` in the appendix,
-      // where slides are numbered with roman numerals instead).
+      // where slides are numbered with roman numerals instead). The number
+      // sits centred in the bottom gap and ends flush with the content's
+      // right edge, clear of the page edge.
       footer: self => align(
         right + horizon,
-        text(size: .6em, fill: self.colors.neutral-light, context {
-          if self.at("appendix", default: false) {
-            let current = utils.slide-counter.get().first()
-            let total = utils.last-slide-counter.final().first()
-            numbering("i", current - total)
-          } else {
-            utils.slide-counter.display() + " / " + utils.last-slide-number
-          }
-        }),
+        pad(right: gap, text(
+          size: .6em,
+          fill: self.colors.neutral-light,
+          context {
+            if self.at("appendix", default: false) {
+              let current = utils.slide-counter.get().first()
+              let total = utils.last-slide-counter.final().first()
+              numbering("i", current - total)
+            } else {
+              utils.slide-counter.display() + " / " + utils.last-slide-number
+            }
+          },
+        )),
       ),
     ),
     ..args,
