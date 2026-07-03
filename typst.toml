@@ -18,6 +18,8 @@ exclude = [
   "CLAUDE.md",
   "hk.pkl",
   "mise.toml",
+  "assets",
+  "thumbnail.png",
 ]
 
 [template]
