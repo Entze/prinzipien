@@ -39,7 +39,7 @@ typst init @preview/prinzipien
 Or import the theme into an existing document:
 
 ```typ
-#import "@preview/prinzipien:0.1.0": *
+#import "@preview/prinzipien:0.1.1": *
 ```
 
 ### Requirements
@@ -55,7 +55,7 @@ Apply the theme with a show rule, then write one message per slide as a
 level-2 heading:
 
 ```typ
-#import "@preview/prinzipien:0.1.0": *
+#import "@preview/prinzipien:0.1.1": *
 
 #show: prinzipien-theme.with(
   config-info(
