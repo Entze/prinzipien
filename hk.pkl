@@ -21,7 +21,12 @@ local checkers = new Mapping<String, Step> {
   ["pkl"] = Builtins.pkl
 }
 
-local linters = new Mapping<String, Step> {}
+local linters = new Mapping<String, Step> {
+  ["typst-package-checker"] {
+    glob = List("*.typ", "**/*.typ", "typst.toml")
+    check = "typst-package-check check"
+  }
+}
 
 local baseHook = new Hook {
   steps {
