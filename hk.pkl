@@ -11,7 +11,7 @@ local formatters = new Mapping<String, Step> {
     types = List("text")
   }
   ["typstyle"] {
-    glob = List("src/**/*.typ")
+    glob = List("*.typ", "**/*.typ")
     check = "typstyle --check {{ files }}"
     fix = "typstyle --inplace {{ files }}"
   }
