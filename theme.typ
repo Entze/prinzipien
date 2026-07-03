@@ -62,9 +62,9 @@
 ///
 /// The slide's message (one full sentence) is its title: it is taken from
 /// the current second-level heading and set at the top of the slide,
-/// flush against the margin edge. The title row spans the full slide
-/// width — the left margin is reserved for the bodies only — so a long
-/// title never competes with the margin for space.
+/// flush against the left edge of the margin. The title row spans the full
+/// slide width — the left margin is reserved for the bodies only — so a
+/// long title never competes with the margin for space.
 ///
 /// Below the title, the margin area and the content area form one row;
 /// both bodies are aligned with its horizon.
@@ -96,15 +96,24 @@
   let margin-width = self.store.margin-width
   let title-row = {
     let logo = square-logo(self, 1.5 * gap)
-    if logo != none {
-      place(top + left, dx: margin-width - 3 * gap, logo)
-    }
-    pad(left: margin-width - gap, text(
+    let heading = text(
       size: 1.15em,
       weight: "bold",
       fill: self.colors.neutral-darkest,
       utils.display-current-heading(level: self.slide-level),
-    ))
+    )
+    // Logo and title begin at the left edge of the margin, not padded in
+    // to where the bodies start.
+    if logo == none {
+      heading
+    } else {
+      grid(
+        columns: (auto, 1fr),
+        column-gutter: 0.5 * gap,
+        align: horizon,
+        logo, heading,
+      )
+    }
   }
   let layout-setting = body => {
     show: setting
