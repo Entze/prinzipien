@@ -1,0 +1,45 @@
+amends "package://github.com/jdx/hk/releases/download/v1.49.0/hk@1.49.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.49.0/hk@1.49.0#/Builtins.pkl"
+
+local formatters = new Mapping<String, Step> {
+  ["mise"] = Builtins.mise
+  ["newlines"] = (Builtins.newlines) {
+    types = List("text")
+  }
+  ["pkl_format"] = Builtins.pkl_format
+  ["trailing_whitespace"] = (Builtins.trailing_whitespace) {
+    types = List("text")
+  }
+}
+
+local checkers = new Mapping<String, Step> {
+  ["pkl"] = Builtins.pkl
+}
+
+local linters = new Mapping<String, Step> {}
+
+local baseHook = new Hook {
+  steps {
+    ["formatters"] = new Group {
+      steps = formatters
+    }
+
+    ["checkers"] = new Group {
+      steps = checkers
+    }
+  }
+}
+
+hooks {
+  ["pre-commit"] = (baseHook) {
+    fix = true
+    stash = "git"
+  }
+  ["fix"] = (baseHook) {
+    fix = true
+  }
+  ["check"] = baseHook
+  ["lint"] {
+    steps = linters
+  }
+}
