@@ -19,10 +19,9 @@ exclude = [
   "hk.pkl",
   "mise.toml",
   "assets",
-  "thumbnail.png",
 ]
 
 [template]
 path = "template"
 entrypoint = "main.typ"
-thumbnail = "thumbnail.png"
+thumbnail = "assets/thumbnail.png"
