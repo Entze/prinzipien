@@ -1,4 +1,5 @@
 [tools]
+"cargo:https://github.com/typst/package-check.git" = "HEAD"
 hk = "1.49.0"
 pkl = "0.31.1"
 tinymist = "0.15.2"
