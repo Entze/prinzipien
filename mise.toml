@@ -6,3 +6,130 @@ pkl = "0.31.1"
 tinymist = "0.15.2"
 typst = "0.15.0"
 typstyle = "0.15.0"
+
+[tasks.bundle]
+description = "Bundle the package into packages/preview/<name>/<version>/"
+tools = { python = "latest", "aqua:BurntSushi/ripgrep" = "latest" }
+sources = [
+  "typst.toml",
+  "lib.typ",
+  "theme.typ",
+  "README.md",
+  "LICENSE.txt",
+  "template/**/*",
+  "assets/**/*",
+]
+outputs = ["packages/preview/**/*"]
+run = '''
+#!/usr/bin/env -S python3 -u
+import re, shutil, subprocess, tempfile, tomllib
+from pathlib import Path
+
+manifest = tomllib.loads(Path("typst.toml").read_text())
+pkg = manifest["package"]
+name, version = pkg["name"], pkg["version"]
+excludes = pkg.get("exclude", [])
+
+
+def is_excluded(path):
+    return any(path == e or path.startswith(e + "/") for e in excludes)
+
+
+tracked = subprocess.run(
+    ["git", "ls-files"], check=True, capture_output=True, text=True
+).stdout.split()
+included = [f for f in tracked if not is_excluded(f)]
+pending = [f for f in tracked if is_excluded(f)]
+
+# Search corpus: the manifest with its `exclude` array stripped (so the
+# exclude list is not read as a set of references), plus every other file.
+stripped = re.sub(
+    r"(?ms)^exclude\s*=\s*\[.*?^\]\s*?$", "", Path("typst.toml").read_text()
+)
+tmp = Path(tempfile.mkdtemp())
+manifest_search = tmp / "typst.toml"
+manifest_search.write_text(stripped)
+
+
+def search_files():
+    return [str(manifest_search) if f == "typst.toml" else f for f in included]
+
+
+def is_referenced(path):
+    # A genuine reference is a path delimited by a quote or paren ("..."
+    # in the manifest or a typst import, ](...) in markdown), not a bare
+    # prose mention such as `examples/demo.typ` in backticks.
+    pattern = r"[\"'(]" + re.escape(path) + r"[\"')]"
+    return subprocess.run(
+        ["rg", "-q", "-e", pattern, "--", *search_files()]
+    ).returncode == 0
+
+
+# Iterate to a fixpoint: a newly pulled-in file may itself reference
+# others. Each productive pass moves at least one file out of `pending`,
+# so the number of passes is bounded by the count of tracked files.
+for _ in range(len(tracked)):
+    if not pending:
+        break
+    changed = False
+    still = []
+    for f in pending:
+        if is_referenced(f):
+            included.append(f)
+            changed = True
+        else:
+            still.append(f)
+    pending = still
+    if not changed:
+        break
+
+shutil.rmtree(tmp, ignore_errors=True)
+
+pkg_root = Path("packages/preview") / name
+dest = pkg_root / version
+if pkg_root.exists():
+    shutil.rmtree(pkg_root)  # keep only the current version
+print(f"Bundling {name}:{version} -> {dest}")
+for f in sorted(included):
+    out = dest / f
+    out.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(f, out)
+    print(f"  {f}")
+
+print(f"Bundled {len(included)} files")
+'''
+
+[tasks.install]
+description = "Install the current version into Typst's local package store"
+tools = { python = "latest" }
+depends = ["bundle"]
+run = '''
+#!/usr/bin/env python3
+import os, platform, shutil, tomllib
+from pathlib import Path
+
+pkg = tomllib.loads(Path("typst.toml").read_text())["package"]
+name, version = pkg["name"], pkg["version"]
+
+system = platform.system()
+if system == "Darwin":
+    data_dir = Path.home() / "Library" / "Application Support"
+elif system == "Windows":
+    data_dir = Path(os.environ.get("APPDATA") or Path.home() / "AppData" / "Roaming")
+else:
+    data_dir = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share")
+
+src = Path("packages/preview") / name / version
+if not src.is_dir():
+    raise SystemExit(f"bundle not found at {src}; run `mise run bundle` first")
+
+# Typst resolves @preview/<name>:<version> from this data directory before
+# reaching for the download cache, so a local build shadows the registry.
+target = data_dir / "typst" / "packages" / "preview" / name / version
+if target.exists():
+    shutil.rmtree(target)
+target.parent.mkdir(parents=True, exist_ok=True)
+shutil.copytree(src, target)
+
+print(f"Installed {name}:{version} -> {target}")
+'''
