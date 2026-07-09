@@ -19,6 +19,7 @@ exclude = [
   "hk.pkl",
   "mise.toml",
   "assets",
+  ".bumpversion.toml",
 ]
 
 [template]
