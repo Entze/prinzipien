@@ -22,6 +22,11 @@ post_commit_hooks = []
 allow_shell_hooks = false
 
 [[tool.bumpversion.files]]
+filename = "README.md"
+search = '#import "@preview/prinzipien:{current_version}"'
+replace = '#import "@preview/prinzipien:{new_version}"'
+
+[[tool.bumpversion.files]]
 filename = "template/main.typ"
 search = '#import "@preview/prinzipien:{current_version}"'
 replace = '#import "@preview/prinzipien:{new_version}"'
