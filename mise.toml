@@ -58,8 +58,15 @@ def search_files():
 def is_referenced(path):
     # A genuine reference is a path delimited by a quote or paren ("..."
     # in the manifest or a typst import, ](...) in markdown), not a bare
-    # prose mention such as `examples/demo.typ` in backticks.
-    pattern = r"[\"'(]" + re.escape(path) + r"[\"')]"
+    # prose mention such as `examples/demo.typ` in backticks. A reference
+    # to an ancestor directory (e.g. ](plans/) in the README) counts too,
+    # and pulls in every file beneath that directory.
+    targets = [path]
+    parent = Path(path).parent
+    while parent != Path("."):
+        targets += [str(parent), f"{parent}/"]
+        parent = parent.parent
+    pattern = "|".join(r"[\"'(]" + re.escape(t) + r"[\"')]" for t in targets)
     return subprocess.run(
         ["rg", "-q", "-e", pattern, "--", *search_files()]
     ).returncode == 0
@@ -99,6 +106,11 @@ for f in sorted(included):
 print(f"Bundled {len(included)} files")
 '''
 
+[tasks.clean]
+description = "Remove the bundle produced by `bundle`"
+# `bundle` writes into packages/; the whole tree is build output (gitignored).
+run = "rm -rf packages"
+
 [tasks.install]
 description = "Install the current version into Typst's local package store"
 tools = { python = "latest" }
@@ -132,4 +144,37 @@ target.parent.mkdir(parents=True, exist_ok=True)
 shutil.copytree(src, target)
 
 print(f"Installed {name}:{version} -> {target}")
+'''
+
+[tasks.uninstall]
+description = "Remove the current version from Typst's local package store"
+tools = { python = "latest" }
+run = '''
+#!/usr/bin/env python3
+import os, platform, shutil, tomllib
+from pathlib import Path
+
+pkg = tomllib.loads(Path("typst.toml").read_text())["package"]
+name, version = pkg["name"], pkg["version"]
+
+system = platform.system()
+if system == "Darwin":
+    data_dir = Path.home() / "Library" / "Application Support"
+elif system == "Windows":
+    data_dir = Path(os.environ.get("APPDATA") or Path.home() / "AppData" / "Roaming")
+else:
+    data_dir = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share")
+
+target = data_dir / "typst" / "packages" / "preview" / name / version
+if not target.exists():
+    print(f"{name}:{version} is not installed at {target}")
+    raise SystemExit(0)
+
+shutil.rmtree(target)
+# Drop the now-empty <name> directory, but leave sibling versions/packages be.
+parent = target.parent
+if parent.is_dir() and not any(parent.iterdir()):
+    parent.rmdir()
+
+print(f"Uninstalled {name}:{version} from {target}")
 '''
