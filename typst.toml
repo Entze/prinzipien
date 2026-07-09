@@ -1,6 +1,6 @@
 [package]
 name = "prinzipien"
-version = "0.1.2"
+version = "0.1.3"
 entrypoint = "lib.typ"
 authors = ["Lukas Grassauer <entze@grassauer.eu>"]
 license = "BSL-1.0"
